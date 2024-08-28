@@ -7,8 +7,9 @@
 
 from manim import *
 import numpy as np
-from svgpathtools import svg2paths, Path, Line
+from svgpathtools import svg2paths, Path, Line, parse_path
 from xml.dom import minidom
+import re
 
 # config.use_opengl_renderer = True
 
@@ -153,6 +154,18 @@ class FourierScene(FourierSceneAbstract):
         # Parse the SVG file
         paths, attributes = svg2paths(file_path)
         
+        def split_path(path):
+            # Convert path to string and split on 'M' or 'm' commands
+            path_str = path.d()
+            subpaths = re.split(r'(?=[Mm])', path_str)
+            # Remove empty subpaths
+            subpaths = [sp for sp in subpaths if sp]
+            # Parse each subpath back into a Path object
+            return [parse_path(sp) for sp in subpaths]
+
+        # Split paths and flatten the list
+        split_paths = [subpath for path in paths for subpath in split_path(path)]
+        
         # Function to convert svgpathtools path to Manim VMobject
         def path_to_vmobject(path):
             manim_path = VMobject()
@@ -172,8 +185,8 @@ class FourierScene(FourierSceneAbstract):
             
             return manim_path
 
-        # Convert each path to a VMobject
-        vmobjects = [path_to_vmobject(path) for path in paths]
+        # Convert each split path to a VMobject
+        vmobjects = [path_to_vmobject(path) for path in split_paths]
         
         # Filter out empty paths
         vmobjects = [path for path in vmobjects if len(path.points) > 0]
