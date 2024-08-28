@@ -153,7 +153,7 @@ class FourierScene(FourierSceneAbstract):
 
     def construct(self):
         # SVG path to draw
-        svg_path = self.get_svg_path("path/to/your/svg/file.svg")  # Replace with your SVG file path
+        svg_path = self.get_svg_path("infinity_symbol.svg")  # Replace with your SVG file path
         svg_path.set_height(4)  # Adjust the size as needed
         
         # Fourier series for the SVG path
