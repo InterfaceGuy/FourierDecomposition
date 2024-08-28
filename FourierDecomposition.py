@@ -7,7 +7,7 @@
 
 from manim import *
 import numpy as np
-from svgpathtools import svg2paths, Path
+from svgpathtools import svg2paths, Path, Line
 from xml.dom import minidom
 
 # config.use_opengl_renderer = True
@@ -162,7 +162,7 @@ class FourierScene(FourierSceneAbstract):
                 
                 manim_path.start_new_path(start_point)
                 
-                if isinstance(segment, Path.Line):
+                if isinstance(segment, Line):
                     manim_path.add_line_to(end_point)
                 else:
                     # For curves, sample points along the segment
