@@ -2,3 +2,6 @@
 /__pycache__
 /media
 /.env
+.aider*
+/.DS_Store
+/FourierDecomposition.sublime-workspace
