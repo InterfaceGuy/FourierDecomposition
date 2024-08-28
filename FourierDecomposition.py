@@ -196,67 +196,60 @@ class FourierScene(FourierSceneAbstract):
         # Scene start
         self.wait(1)
 
-        # Animate each path separately
+        # Create Fourier decomposition for each path
+        all_vectors = VGroup()
+        all_circles = VGroup()
+        all_drawn_paths = VGroup()
+
         for i, svg_path in enumerate(svg_paths):
-            # Create Fourier decomposition for the path
             vectors = self.get_fourier_vectors(svg_path)
             circles = self.get_circles(vectors)
-            drawn_path = self.get_drawn_path(vectors).set_color(RED)
+            drawn_path = self.get_drawn_path(vectors).set_color([RED, GREEN, BLUE][i % 3])  # Cycle through colors
 
-            # Animate the creation of vectors and circles
-            self.play(
-                *[GrowArrow(arrow) for arrow in vectors],
-                *[Create(circle) for circle in circles],
-                run_time=2.5,
-            )
+            all_vectors.add(vectors)
+            all_circles.add(circles)
+            all_drawn_paths.add(drawn_path)
 
-            # Add objects to the scene
-            self.add(vectors, circles, drawn_path.set_stroke(width=0))
+        # Animate the creation of all vectors and circles simultaneously
+        self.play(
+            *[GrowArrow(arrow) for vector_group in all_vectors for arrow in vector_group],
+            *[Create(circle) for circle_group in all_circles for circle in circle_group],
+            run_time=2.5,
+        )
 
-            # Set up camera to follow the last vector
-            last_vector = vectors[-1]
-            def follow_end_vector(camera):
-                camera.move_to(last_vector.get_end())
+        # Add all objects to the scene
+        self.add(all_vectors, all_circles, all_drawn_paths.set_stroke(width=0))
 
-            # Camera move
-            self.play(self.camera.frame.animate.scale(0.3).move_to(last_vector.get_end()), run_time=2)
+        # Set up camera to show all paths
+        self.play(self.camera.frame.animate.scale(1.2).move_to(all_paths.get_center()), run_time=2)
 
-            # Add updaters and start vector clock
-            self.camera.frame.add_updater(follow_end_vector)
+        # Add updaters and start vector clock
+        for vectors, circles, drawn_path in zip(all_vectors, all_circles, all_drawn_paths):
             vectors.add_updater(self.update_vectors)
             circles.add_updater(self.update_circles)
             drawn_path.add_updater(self.update_path)
-            self.start_vector_clock()
 
-            self.play(self.slow_factor_tracker.animate.set_value(1), run_time=0.5 * self.cycle_seconds)
-            self.wait(1 * self.cycle_seconds)
+        self.start_vector_clock()
 
-            # Move camera out
-            self.camera.frame.remove_updater(follow_end_vector)
-            self.play(
-                self.camera.frame.animate.set_width(all_paths.width * 1.5).move_to(all_paths.get_center()),
-                run_time=1 * self.cycle_seconds,
-            )
-            self.wait(0.8 * self.cycle_seconds)
-            self.play(self.slow_factor_tracker.animate.set_value(0), run_time=0.5 * self.cycle_seconds)
-            
-            # Remove updaters so can animate
-            self.stop_vector_clock()
-            drawn_path.clear_updaters()
+        # Animate all paths simultaneously
+        self.play(self.slow_factor_tracker.animate.set_value(1), run_time=0.5 * self.cycle_seconds)
+        self.wait(3 * self.cycle_seconds)  # Increased wait time to see full animation
+        self.play(self.slow_factor_tracker.animate.set_value(0), run_time=0.5 * self.cycle_seconds)
+
+        # Remove updaters
+        self.stop_vector_clock()
+        for vectors, circles, drawn_path in zip(all_vectors, all_circles, all_drawn_paths):
             vectors.clear_updaters()
             circles.clear_updaters()
+            drawn_path.clear_updaters()
 
-            # Fade out Fourier decomposition
-            self.play(
-                *[Uncreate(v) for v in vectors + circles],
-                FadeOut(drawn_path),
-                run_time=2.5,
-            )
-
-            # If it's not the last path, prepare for the next one
-            if i < len(svg_paths) - 1:
-                self.wait(1)
-                self.play(self.camera.frame.animate.scale(1/0.3))  # Reset camera zoom
+        # Fade out all Fourier decompositions
+        self.play(
+            *[Uncreate(v) for vector_group in all_vectors for v in vector_group],
+            *[Uncreate(c) for circle_group in all_circles for c in circle_group],
+            *[FadeOut(path) for path in all_drawn_paths],
+            run_time=2.5,
+        )
 
         # Fade in all original SVG paths
         self.play(FadeIn(all_paths), run_time=2.5)
