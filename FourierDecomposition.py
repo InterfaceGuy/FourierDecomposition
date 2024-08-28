@@ -8,7 +8,6 @@
 from manim import *
 import numpy as np
 from svgpathtools import svg2paths, Path
-from svg.path import parse_path
 from xml.dom import minidom
 
 # config.use_opengl_renderer = True
@@ -158,16 +157,19 @@ class FourierScene(FourierSceneAbstract):
         def path_to_vmobject(path):
             manim_path = VMobject()
             for segment in path:
-                points = np.array([segment.start.real, segment.start.imag, 0])
-                manim_path.start_new_path(points)
+                start_point = np.array([segment.start.real, segment.start.imag, 0])
+                end_point = np.array([segment.end.real, segment.end.imag, 0])
+                
+                manim_path.start_new_path(start_point)
+                
                 if isinstance(segment, Path.Line):
-                    end_point = np.array([segment.end.real, segment.end.imag, 0])
                     manim_path.add_line_to(end_point)
                 else:
                     # For curves, sample points along the segment
                     for t in np.linspace(0, 1, 10):
                         point = segment.point(t)
                         manim_path.add_smooth_curve_to(np.array([point.real, point.imag, 0]))
+            
             return manim_path
 
         # Convert each path to a VMobject
