@@ -149,40 +149,41 @@ class FourierScene(FourierSceneAbstract):
 
     def get_svg_paths(self, file_path):
         svg_mobject = SVGMobject(file_path)
-        return [path for path in svg_mobject.family_members_with_points() if isinstance(path, VMobject) and len(path.points) > 0]
+        paths = [path for path in svg_mobject.family_members_with_points() if isinstance(path, VMobject) and len(path.points) > 0]
+        return paths[:1] if paths else []  # Return only the first path
 
     def construct(self):
         # SVG paths to draw
         svg_paths = self.get_svg_paths("infinity_symbol.svg")  # Replace with your SVG file path
         
-        all_mobs = VGroup(*svg_paths)
-        all_mobs.set_height(6)  # Adjust the overall size as needed
-        all_mobs.move_to(ORIGIN)
+        if not svg_paths:
+            self.add(Text("No valid paths found in SVG").scale(0.5))
+            return
 
-        # Create Fourier decompositions for each path
-        path_decompositions = []
-        for svg_path in svg_paths:
-            vectors = self.get_fourier_vectors(svg_path)
-            circles = self.get_circles(vectors)
-            drawn_path = self.get_drawn_path(vectors).set_color(RED)
-            path_decompositions.append((vectors, circles, drawn_path))
+        svg_path = svg_paths[0]
+        svg_path.set_height(6)  # Adjust the size as needed
+        svg_path.move_to(ORIGIN)
+
+        # Create Fourier decomposition for the path
+        vectors = self.get_fourier_vectors(svg_path)
+        circles = self.get_circles(vectors)
+        drawn_path = self.get_drawn_path(vectors).set_color(RED)
 
         # Scene start
         self.wait(1)
 
-        # Animate the creation of vectors and circles for all paths
+        # Animate the creation of vectors and circles
         self.play(
-            *[GrowArrow(arrow) for decomp in path_decompositions for arrow in decomp[0]],
-            *[Create(circle) for decomp in path_decompositions for circle in decomp[1]],
+            *[GrowArrow(arrow) for arrow in vectors],
+            *[Create(circle) for circle in circles],
             run_time=2.5,
         )
 
-        # Add all objects to the scene
-        for vectors, circles, drawn_path in path_decompositions:
-            self.add(vectors, circles, drawn_path.set_stroke(width=0))
+        # Add objects to the scene
+        self.add(vectors, circles, drawn_path.set_stroke(width=0))
 
-        # Set up camera to follow the last vector of the last path
-        last_vector = path_decompositions[-1][0][-1]
+        # Set up camera to follow the last vector
+        last_vector = vectors[-1]
         def follow_end_vector(camera):
             camera.move_to(last_vector.get_end())
 
@@ -191,10 +192,9 @@ class FourierScene(FourierSceneAbstract):
 
         # Add updaters and start vector clock
         self.camera.frame.add_updater(follow_end_vector)
-        for vectors, circles, drawn_path in path_decompositions:
-            vectors.add_updater(self.update_vectors)
-            circles.add_updater(self.update_circles)
-            drawn_path.add_updater(self.update_path)
+        vectors.add_updater(self.update_vectors)
+        circles.add_updater(self.update_circles)
+        drawn_path.add_updater(self.update_path)
         self.start_vector_clock()
 
         self.play(self.slow_factor_tracker.animate.set_value(1), run_time=0.5 * self.cycle_seconds)
@@ -203,7 +203,7 @@ class FourierScene(FourierSceneAbstract):
         # Move camera out
         self.camera.frame.remove_updater(follow_end_vector)
         self.play(
-            self.camera.frame.animate.set_width(all_mobs.width * 1.5).move_to(all_mobs.get_center()),
+            self.camera.frame.animate.set_width(svg_path.width * 1.5).move_to(svg_path.get_center()),
             run_time=1 * self.cycle_seconds,
         )
         self.wait(0.8 * self.cycle_seconds)
@@ -211,16 +211,15 @@ class FourierScene(FourierSceneAbstract):
         
         # Remove updaters so can animate
         self.stop_vector_clock()
-        for vectors, circles, drawn_path in path_decompositions:
-            drawn_path.clear_updaters()
-            vectors.clear_updaters()
-            circles.clear_updaters()
+        drawn_path.clear_updaters()
+        vectors.clear_updaters()
+        circles.clear_updaters()
 
-        # Fade out Fourier decompositions and fade in original SVG
+        # Fade out Fourier decomposition and fade in original SVG
         self.play(
-            *[Uncreate(vmobject) for decomp in path_decompositions for vmobject in decomp[0] + decomp[1]],
-            *[FadeOut(decomp[2]) for decomp in path_decompositions],
-            FadeIn(all_mobs),
+            *[Uncreate(v) for v in vectors + circles],
+            FadeOut(drawn_path),
+            FadeIn(svg_path),
             run_time=2.5,
         )
 
