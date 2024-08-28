@@ -7,7 +7,6 @@
 
 from manim import *
 import numpy as np
-from svgpathtools import svg2paths
 
 # config.use_opengl_renderer = True
 
@@ -149,20 +148,20 @@ class FourierScene(FourierSceneAbstract):
         super().__init__()
 
     def get_svg_path(self, file_path):
-        paths, attributes = svg2paths(file_path)
-        return VMobject().set_points_smoothly([complex_to_R3(complex(*z)) for z in paths[0].points()])
+        svg_mobject = SVGMobject(file_path)
+        return svg_mobject.family_members_with_points()[0]
 
     def construct(self):
         # SVG path to draw
         svg_path = self.get_svg_path("path/to/your/svg/file.svg")  # Replace with your SVG file path
-        group = VGroup(svg_path)
-
+        svg_path.set_height(4)  # Adjust the size as needed
+        
         # Fourier series for the SVG path
         vectors = self.get_fourier_vectors(svg_path)
         circles = self.get_circles(vectors)
         drawn_path = self.get_drawn_path(vectors).set_color(RED)
 
-        all_mobs = group
+        all_mobs = VGroup(svg_path)
 
         # Camera updater
         last_vector = vectors[-1]
