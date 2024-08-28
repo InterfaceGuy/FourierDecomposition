@@ -7,7 +7,7 @@
 
 from manim import *
 import numpy as np
-# import timeit
+from svgpathtools import svg2paths
 
 # config.use_opengl_renderer = True
 
@@ -148,41 +148,24 @@ class FourierScene(FourierSceneAbstract):
     def __init__(self):
         super().__init__()
 
-    def get_tex_symbol(self, symbol, color = None):
-        symbol = Tex(symbol, **self.fourier_symbol_config)
-    
-        if (color is not None):
-            symbol.set_color(color)
-
-        return symbol
-
-    def get_path_from_symbol(self, symbol):
-        return symbol.family_members_with_points()[0]
+    def get_svg_path(self, file_path):
+        paths, attributes = svg2paths(file_path)
+        return VMobject().set_points_smoothly([complex_to_R3(complex(*z)) for z in paths[0].points()])
 
     def construct(self):
-        # Symbols to draw
-        symbol1 = self.get_tex_symbol("m", RED)
-        symbol2 = self.get_tex_symbol("e", BLUE)
-        group = VGroup(symbol1, symbol2).arrange(RIGHT)
+        # SVG path to draw
+        svg_path = self.get_svg_path("path/to/your/svg/file.svg")  # Replace with your SVG file path
+        group = VGroup(svg_path)
 
-        # Fourier series for symbol1
-        vectors1 = self.get_fourier_vectors(self.get_path_from_symbol(symbol1))
-        circles1 = self.get_circles(vectors1)
-        drawn_path1 = self.get_drawn_path(vectors1).set_color(RED)
+        # Fourier series for the SVG path
+        vectors = self.get_fourier_vectors(svg_path)
+        circles = self.get_circles(vectors)
+        drawn_path = self.get_drawn_path(vectors).set_color(RED)
 
-        # Fourier series for symbol2
-        vectors2 = self.get_fourier_vectors(self.get_path_from_symbol(symbol2))
-        circles2 = self.get_circles(vectors2)
-        drawn_path2 = self.get_drawn_path(vectors2).set_color(BLUE)
-
-        # Text definition
-        text = Tex("hire", fill_opacity = 1, height = 3)
-        text.next_to(group, LEFT*1.4)
-
-        all_mobs = VGroup(group, text)
+        all_mobs = group
 
         # Camera updater
-        last_vector = vectors1[-1]
+        last_vector = vectors[-1]
 
         def follow_end_vector(camera): 
             camera.move_to(last_vector.get_end())
@@ -190,73 +173,51 @@ class FourierScene(FourierSceneAbstract):
         # Scene start
         self.wait(1)
         self.play(
-            *[
-                GrowArrow(arrow)
-                for vector_group in [vectors1, vectors2]
-                for arrow in vector_group
-            ],
-            *[
-                Create(circle)
-                for circle_group in [circles1, circles2]
-                for circle in circle_group
-            ],
+            *[GrowArrow(arrow) for arrow in vectors],
+            *[Create(circle) for circle in circles],
             run_time=2.5,
         )
 
         # Add objects to scene
-        self.add( 
-            vectors1,
-            circles1,
-            drawn_path1.set_stroke(width = 0),
-            vectors2,
-            circles2,
-            drawn_path2.set_stroke(width = 0),
+        self.add(
+            vectors,
+            circles,
+            drawn_path.set_stroke(width=0),
         )
 
         # Camera move
-        self.play(self.camera.frame.animate.scale(0.3).move_to(last_vector.get_end()), run_time = 2)
+        self.play(self.camera.frame.animate.scale(0.3).move_to(last_vector.get_end()), run_time=2)
 
         # Add updaters and start vector clock
         self.camera.frame.add_updater(follow_end_vector)
-        vectors1.add_updater(self.update_vectors)
-        circles1.add_updater(self.update_circles)
-        vectors2.add_updater(self.update_vectors)
-        circles2.add_updater(self.update_circles)
-        drawn_path1.add_updater(self.update_path)
-        drawn_path2.add_updater(self.update_path)
+        vectors.add_updater(self.update_vectors)
+        circles.add_updater(self.update_circles)
+        drawn_path.add_updater(self.update_path)
         self.start_vector_clock()
 
-        self.play(self.slow_factor_tracker.animate.set_value(1), run_time = 0.5 * self.cycle_seconds)
+        self.play(self.slow_factor_tracker.animate.set_value(1), run_time=0.5 * self.cycle_seconds)
         self.wait(1 * self.cycle_seconds)
 
-        # Move camera then write text
+        # Move camera out
         self.camera.frame.remove_updater(follow_end_vector)
         self.play(
             self.camera.frame.animate.set_width(all_mobs.width * 1.5).move_to(all_mobs.get_center()),
-            Write(text),
-            run_time = 1 * self.cycle_seconds,
+            run_time=1 * self.cycle_seconds,
         )
         self.wait(0.8 * self.cycle_seconds)
-        self.play(self.slow_factor_tracker.animate.set_value(0), run_time = 0.5 * self.cycle_seconds)
+        self.play(self.slow_factor_tracker.animate.set_value(0), run_time=0.5 * self.cycle_seconds)
         
         # Remove updaters so can animate
         self.stop_vector_clock()
-        drawn_path1.clear_updaters()
-        drawn_path2.clear_updaters()
-        vectors1.clear_updaters()
-        vectors2.clear_updaters()
-        circles1.clear_updaters()
-        circles2.clear_updaters()
+        drawn_path.clear_updaters()
+        vectors.clear_updaters()
+        circles.clear_updaters()
 
         self.play(
-            *[
-                Uncreate(vmobject)
-                for vgroup in [vectors1, vectors2, circles1, circles2]
-                for vmobject in vgroup
-            ],
-            FadeOut(drawn_path1, drawn_path2),
-            FadeIn(symbol1, symbol2),
-            run_time = 2.5,
+            *[Uncreate(vmobject) for vmobject in vectors + circles],
+            FadeOut(drawn_path),
+            FadeIn(svg_path),
+            run_time=2.5,
         )
 
         self.wait(3)
